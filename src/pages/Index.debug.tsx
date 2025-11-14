@@ -1,6 +1,7 @@
+console.log("Index user:", user, "loading:", loading);
 import { useState, useEffect } from "react";
 import { fetchStudentProgress, saveStudentProgress } from "@/lib/progressApi";
-import { useSupabaseAuth } from "@/hooks/AuthProvider";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AuthModal } from "@/components/AuthModal";
 import { Dashboard } from "@/components/Dashboard";
 import { SubjectTracker } from "@/components/SubjectTracker";
@@ -48,7 +49,6 @@ interface StudySession {
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [progressId, setProgressId] = useState<string | undefined>(undefined);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
 
   const [mockTests, setMockTests] = useState<MockTest[]>([]);
@@ -66,10 +66,6 @@ const Index = () => {
         const data = await fetchStudentProgress(user.id, "subjects");
         if (data && data.length > 0) {
           setSubjects(data[0].progress.subjects || []);
-          setProgressId(data[0].id);
-        } else {
-          setSubjects([]);
-          setProgressId(undefined);
         }
       } catch (e) {
         // Optionally handle error
@@ -82,16 +78,11 @@ const Index = () => {
   // Save subjects to Supabase
   const persistSubjects = async (subjectsToSave: Subject[]) => {
     if (!user) return;
-    const result = await saveStudentProgress({
-      id: progressId,
+    await saveStudentProgress({
       student_id: user.id,
       subject: "subjects",
       progress: { subjects: subjectsToSave },
     });
-    // If we just inserted, update progressId with the new row's id
-    if (!progressId && result && result.data && result.data[0]?.id) {
-      setProgressId(result.data[0].id);
-    }
   };
 
   const handleAddSubject = async (newSubject: Omit<Subject, "id">) => {
