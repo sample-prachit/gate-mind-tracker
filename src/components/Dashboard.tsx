@@ -56,7 +56,7 @@ export const Dashboard = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{averageScore}%</div>
-            <p className="text-xs text-muted-foreground mt-1">Mock tests</p>
+            <p className="text-xs text-muted-foreground mt-1">All tests</p>
           </CardContent>
         </Card>
 

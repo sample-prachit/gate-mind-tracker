@@ -22,10 +22,34 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
   const [tab, setTab] = useState<'manual' | 'stopwatch'>('manual');
   const [hours, setHours] = useState("");
 
-  // Stopwatch state
-  const [isRunning, setIsRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0); // seconds
+  // Stopwatch state - load from localStorage on mount
+  const [isRunning, setIsRunning] = useState(() => {
+    const saved = localStorage.getItem('stopwatch_isRunning');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [elapsed, setElapsed] = useState(() => {
+    const saved = localStorage.getItem('stopwatch_elapsed');
+    const savedTime = saved ? parseInt(saved) : 0;
+    const savedTimestamp = localStorage.getItem('stopwatch_timestamp');
+    
+    // If stopwatch was running, calculate elapsed time since last save
+    if (savedTimestamp && JSON.parse(localStorage.getItem('stopwatch_isRunning') || 'false')) {
+      const lastTimestamp = parseInt(savedTimestamp);
+      const now = Date.now();
+      const additionalSeconds = Math.floor((now - lastTimestamp) / 1000);
+      return savedTime + additionalSeconds;
+    }
+    
+    return savedTime;
+  }); // seconds
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save stopwatch state to localStorage whenever it changes
+  React.useEffect(() => {
+    localStorage.setItem('stopwatch_isRunning', JSON.stringify(isRunning));
+    localStorage.setItem('stopwatch_elapsed', elapsed.toString());
+    localStorage.setItem('stopwatch_timestamp', Date.now().toString());
+  }, [isRunning, elapsed]);
 
   // Stopwatch logic
   const startStopwatch = () => {
@@ -44,6 +68,9 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
     setIsRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
     setElapsed(0);
+    localStorage.removeItem('stopwatch_isRunning');
+    localStorage.removeItem('stopwatch_elapsed');
+    localStorage.removeItem('stopwatch_timestamp');
   };
   const saveStopwatch = () => {
     if (elapsed > 0) {
@@ -53,12 +80,17 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
     }
   };
 
-  // Cleanup interval on unmount
+  // Auto-start stopwatch if it was running when page loaded
   React.useEffect(() => {
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setElapsed((prev) => prev + 1);
+      }, 1000);
+    }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [isRunning]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

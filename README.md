@@ -1,73 +1,250 @@
-# Welcome to your Lovable project
+# GATE Mind Tracker 🎓
 
-## Project info
+A comprehensive study tracking and progress monitoring application designed specifically for GATE (Graduate Aptitude Test in Engineering) exam preparation.
 
-**URL**: https://lovable.dev/projects/dd63b295-fc28-463c-bfb4-a35db64dcafa
+## ✨ Features
 
-## How can I edit this code?
+### 📚 Subject Management
+- Create and manage subjects with topics/units
+- Track completion status for each topic
+- Set study duration and hours for each subject
+- Color-coded subject cards for easy identification
+- Delete subjects with confirmation
 
-There are several ways of editing your application.
+### 📊 Test Performance Tracking
+- **Mock Tests**: Track full-length mock exam scores
+- **Subject Tests**: Monitor subject-specific test performance
+- **Unit Tests**: Track individual unit/topic test scores
+- Performance trend visualization with charts
+- Delete test records with confirmation
+- Subject and unit selection from created subjects
 
-**Use Lovable**
+### ⏱️ Study Time Logger
+- **Manual Entry**: Log study hours directly
+- **Stopwatch Timer**: Built-in timer that persists across tab switches
+  - Continues running even when switching tabs
+  - Only stops when explicitly paused or browser closed
+  - Automatically calculates elapsed time on return
+- Visual charts showing last 7 days study pattern
+- Weekly study hour totals
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/dd63b295-fc28-463c-bfb4-a35db64dcafa) and start prompting.
+### 🔥 Study Streak Calendar
+- 30-day heatmap visualization
+- Current streak counter
+- Motivational streak tracking
+- Visual feedback for study consistency
 
-Changes made via Lovable will be committed automatically to this repo.
+### 📈 Performance Analytics
+- Overall progress tracking
+- Subject-wise performance analysis
+- Target vs. actual score comparison
+- Performance status indicators
 
-**Use your preferred IDE**
+### 🎯 Dashboard Overview
+- Study streak display
+- Total study time (weekly)
+- Average test score across all tests
+- Topics completion progress
+- Quick stats at a glance
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🛠️ Tech Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Frontend**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui (Radix UI)
+- **Charts**: Recharts
+- **Backend**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **State Management**: React Hooks
+- **Form Handling**: React Hook Form + Zod
+- **Icons**: Lucide React
 
-Follow these steps:
+## 🚀 Getting Started
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Prerequisites
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- Node.js (v16 or higher)
+- npm or yarn or bun
+- Supabase account
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Installation
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd gate-mind-tracker
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   bun install
+   ```
+
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Set up Supabase Database**
+
+   Create a table named `student_progress` with the following schema:
+   ```sql
+   create table student_progress (
+     id uuid default uuid_generate_v4() primary key,
+     student_id uuid references auth.users not null,
+     subject text not null,
+     progress jsonb not null,
+     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+   );
+
+   -- Enable Row Level Security
+   alter table student_progress enable row level security;
+
+   -- Create policy for users to only access their own data
+   create policy "Users can only access their own progress"
+     on student_progress for all
+     using (auth.uid() = student_id);
+   ```
+
+5. **Run the development server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   bun dev
+   ```
+
+6. **Open your browser**
+   
+   Navigate to `http://localhost:5173`
+
+## 📁 Project Structure
+
+```
+gate-mind-tracker/
+├── src/
+│   ├── components/          # React components
+│   │   ├── ui/             # Reusable UI components (shadcn)
+│   │   ├── Dashboard.tsx   # Dashboard overview
+│   │   ├── SubjectTracker.tsx
+│   │   ├── TestTracker.tsx
+│   │   ├── StudyTimeLogger.tsx
+│   │   ├── StreakCalendar.tsx
+│   │   └── ...
+│   ├── hooks/              # Custom React hooks
+│   │   ├── AuthProvider.tsx
+│   │   └── useSupabaseAuth.ts
+│   ├── lib/                # Utility libraries
+│   │   ├── progressApi.ts  # Database API functions
+│   │   ├── supabaseClient.ts
+│   │   └── utils/
+│   │       └── calculations.ts  # Helper functions
+│   ├── pages/              # Page components
+│   │   └── Index.tsx       # Main application page
+│   ├── types/              # TypeScript type definitions
+│   │   └── index.ts
+│   └── main.tsx            # Application entry point
+├── public/
+├── index.html
+└── package.json
 ```
 
-**Edit a file directly in GitHub**
+## 🗄️ Database Schema
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### `student_progress` table
 
-**Use GitHub Codespaces**
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary key |
+| `student_id` | uuid | Foreign key to auth.users |
+| `subject` | text | Data type identifier (subjects, mock_tests, study_sessions) |
+| `progress` | jsonb | JSON data containing the actual records |
+| `created_at` | timestamp | Creation timestamp |
+| `updated_at` | timestamp | Last update timestamp |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Data Types stored in `progress` column:
 
-## What technologies are used for this project?
+- **subjects**: Array of subject objects with topics, hours, dates
+- **mock_tests**: Array of test objects with scores, dates, types
+- **study_sessions**: Array of session objects with hours and dates
 
-This project is built with:
+## 🔐 Authentication
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The app uses Supabase Authentication:
+- Email/Password authentication
+- Secure session management
+- Row-level security policies
+- User-specific data isolation
 
-## How can I deploy this project?
+## 🎨 Key Features Explained
 
-Simply open [Lovable](https://lovable.dev/projects/dd63b295-fc28-463c-bfb4-a35db64dcafa) and click on Share -> Publish.
+### Persistent Stopwatch
+The stopwatch uses `localStorage` to maintain state across tab switches and browser sessions. It calculates elapsed time based on the last saved timestamp when you return to the tab.
 
-## Can I connect a custom domain to my Lovable project?
+### Test Categories
+Tests are organized into three types:
+- **Mock**: Full practice exams (no subject selection)
+- **Subject**: Subject-specific tests (select from your subjects)
+- **Unit**: Topic/unit specific tests (select subject + unit)
 
-Yes, you can!
+### Data Persistence
+All data is automatically synced to Supabase:
+- Subjects are saved when added/modified/deleted
+- Tests are saved immediately after creation/deletion
+- Study sessions persist automatically
+- Streak data is calculated from study sessions
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🧪 Development
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run build:dev` - Build in development mode
+- `npm run lint` - Run ESLint
+- `npm run preview` - Preview production build
+
+### Code Style
+
+The project uses:
+- ESLint for code linting
+- TypeScript for type safety
+- Prettier (recommended)
+
+## 🚀 Deployment
+
+### Build the app
+```bash
+npm run build
+```
+
+The built files will be in the `dist/` directory, ready to deploy to any static hosting service (Vercel, Netlify, etc.).
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 🙏 Acknowledgments
+
+- Built with [Vite](https://vitejs.dev/)
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- Backend by [Supabase](https://supabase.com/)
+- Icons from [Lucide](https://lucide.dev/)
+
+---
+
+**Happy Studying! Good luck with your GATE preparation! 🎯**

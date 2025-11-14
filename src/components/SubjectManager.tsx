@@ -33,6 +33,8 @@ interface Subject {
 
 interface SubjectManagerProps {
   onAddSubject: (subject: Omit<Subject, "id">) => void;
+  onEditSubject?: (subjectId: string, subject: Omit<Subject, "id">) => void;
+  subject?: Subject;
   trigger?: React.ReactNode;
 }
 
@@ -44,14 +46,33 @@ const COLORS = [
   { value: "bg-chart-5/10 text-chart-5", label: "Red" },
 ];
 
-export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) => {
+export const SubjectManager = ({ onAddSubject, onEditSubject, subject, trigger }: SubjectManagerProps) => {
+  const isEditMode = !!subject;
   const [open, setOpen] = useState(false);
-  const [subjectName, setSubjectName] = useState("");
-  const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
-  const [topics, setTopics] = useState<string[]>([]);
+  const [subjectName, setSubjectName] = useState(subject?.name || "");
+  const [selectedColor, setSelectedColor] = useState(subject?.color || COLORS[0].value);
+  const [topics, setTopics] = useState<string[]>(subject?.topics.map(t => t.name) || []);
   const [currentTopic, setCurrentTopic] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(subject?.startDate || "");
+  const [endDate, setEndDate] = useState(subject?.endDate || "");
+
+  // Update form when subject prop changes
+  const resetForm = () => {
+    if (subject) {
+      setSubjectName(subject.name);
+      setSelectedColor(subject.color);
+      setTopics(subject.topics.map(t => t.name));
+      setStartDate(subject.startDate);
+      setEndDate(subject.endDate);
+    } else {
+      setSubjectName("");
+      setSelectedColor(COLORS[0].value);
+      setTopics([]);
+      setStartDate("");
+      setEndDate("");
+    }
+    setCurrentTopic("");
+  };
 
   const handleAddTopic = () => {
     if (currentTopic.trim()) {
@@ -67,27 +88,28 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (subjectName.trim() && topics.length > 0 && startDate && endDate) {
-      const newSubject: Omit<Subject, "id"> = {
+      const subjectData: Omit<Subject, "id"> = {
         name: subjectName.trim(),
         color: selectedColor,
         topics: topics.map((topic, index) => ({
-          id: index.toString(),
+          id: subject?.topics[index]?.id || index.toString(),
           name: topic,
-          completed: false,
+          completed: subject?.topics[index]?.completed || false,
         })),
         startDate,
         endDate,
-        totalHours: 0,
-        completedHours: 0,
-        inProgressHours: 0,
+        totalHours: subject?.totalHours || 0,
+        completedHours: subject?.completedHours || 0,
+        inProgressHours: subject?.inProgressHours || 0,
       };
-      onAddSubject(newSubject);
-      setSubjectName("");
-      setTopics([]);
-      setCurrentTopic("");
-      setSelectedColor(COLORS[0].value);
-      setStartDate("");
-      setEndDate("");
+      
+      if (isEditMode && onEditSubject && subject) {
+        onEditSubject(subject.id, subjectData);
+      } else {
+        onAddSubject(subjectData);
+      }
+      
+      resetForm();
       setOpen(false);
     }
   };
@@ -104,9 +126,12 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
       </DialogTrigger>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Subject</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Subject" : "Add New Subject"}</DialogTitle>
           <DialogDescription>
-            Create a subject and add topics you need to cover for GATE exam
+            {isEditMode 
+              ? "Update subject details and topics"
+              : "Create a subject and add topics you need to cover for GATE exam"
+            }
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -210,7 +235,10 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                resetForm();
+                setOpen(false);
+              }}
               className="flex-1"
             >
               Cancel
@@ -220,7 +248,7 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
               disabled={!subjectName.trim() || topics.length === 0 || !startDate || !endDate}
               className="flex-1"
             >
-              Add Subject
+              {isEditMode ? "Update Subject" : "Add Subject"}
             </Button>
           </div>
         </form>

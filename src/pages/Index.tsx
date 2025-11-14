@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { fetchStudentProgress, saveStudentProgress } from "@/lib/progressApi";
+import { fetchUserData, saveUserData } from "@/lib/progressApi";
 import { useSupabaseAuth } from "@/hooks/AuthProvider";
 import { AuthModal } from "@/components/AuthModal";
 import { Dashboard } from "@/components/Dashboard";
 import { SubjectTracker } from "@/components/SubjectTracker";
-import { MockTestTracker } from "@/components/MockTestTracker";
+import { TestTracker, TestType } from "@/components/TestTracker";
 import { StudyTimeLogger } from "@/components/StudyTimeLogger";
 import { PerformanceAnalytics } from "@/components/PerformanceAnalytics";
 import { StreakCalendar } from "@/components/StreakCalendar";
@@ -32,11 +32,16 @@ interface Subject {
   inProgressHours: number;
 }
 
-interface MockTest {
+interface Test {
   id: string;
   date: string;
   score: number;
   totalMarks: number;
+  testType: TestType;
+  subjectId?: string;
+  subjectName?: string;
+  unitId?: string;
+  unitName?: string;
 }
 
 interface StudySession {
@@ -48,12 +53,16 @@ interface StudySession {
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [progressId, setProgressId] = useState<string | undefined>(undefined);
+  const [subjectsRecordId, setSubjectsRecordId] = useState<string | undefined>(undefined);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
 
-  const [mockTests, setMockTests] = useState<MockTest[]>([]);
+  const [mockTests, setMockTests] = useState<Test[]>([]);
+  const [mockTestsRecordId, setMockTestsRecordId] = useState<string | undefined>(undefined);
+  const [loadingMockTests, setLoadingMockTests] = useState(true);
 
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
+  const [studySessionsRecordId, setStudySessionsRecordId] = useState<string | undefined>(undefined);
+  const [loadingStudySessions, setLoadingStudySessions] = useState(true);
 
 
 
@@ -63,34 +72,118 @@ const Index = () => {
     const loadSubjects = async () => {
       setLoadingSubjects(true);
       try {
-        const data = await fetchStudentProgress(user.id, "subjects");
+        const data = await fetchUserData(user.id, "subjects");
         if (data && data.length > 0) {
           setSubjects(data[0].progress.subjects || []);
-          setProgressId(data[0].id);
+          setSubjectsRecordId(data[0].id);
         } else {
           setSubjects([]);
-          setProgressId(undefined);
+          setSubjectsRecordId(undefined);
         }
       } catch (e) {
-        // Optionally handle error
+        console.error('Error loading subjects:', e);
       }
       setLoadingSubjects(false);
     };
     loadSubjects();
   }, [user]);
 
+  // Fetch mock tests from Supabase
+  useEffect(() => {
+    if (!user) return;
+    const loadMockTests = async () => {
+      setLoadingMockTests(true);
+      try {
+        const data = await fetchUserData(user.id, "mock_tests");
+        if (data && data.length > 0) {
+          setMockTests(data[0].progress.mock_tests || []);
+          setMockTestsRecordId(data[0].id);
+        } else {
+          setMockTests([]);
+          setMockTestsRecordId(undefined);
+        }
+      } catch (e) {
+        console.error('Error loading mock tests:', e);
+      }
+      setLoadingMockTests(false);
+    };
+    loadMockTests();
+  }, [user]);
+
+  // Fetch study sessions from Supabase
+  useEffect(() => {
+    if (!user) return;
+    const loadStudySessions = async () => {
+      setLoadingStudySessions(true);
+      try {
+        const data = await fetchUserData(user.id, "study_sessions");
+        if (data && data.length > 0) {
+          setStudySessions(data[0].progress.study_sessions || []);
+          setStudySessionsRecordId(data[0].id);
+        } else {
+          setStudySessions([]);
+          setStudySessionsRecordId(undefined);
+        }
+      } catch (e) {
+        console.error('Error loading study sessions:', e);
+      }
+      setLoadingStudySessions(false);
+    };
+    loadStudySessions();
+  }, [user]);
+
   // Save subjects to Supabase
   const persistSubjects = async (subjectsToSave: Subject[]) => {
     if (!user) return;
-    const result = await saveStudentProgress({
-      id: progressId,
-      student_id: user.id,
-      subject: "subjects",
-      progress: { subjects: subjectsToSave },
-    });
-    // If we just inserted, update progressId with the new row's id
-    if (!progressId && result && result.data && result.data[0]?.id) {
-      setProgressId(result.data[0].id);
+    try {
+      const result = await saveUserData(
+        user.id,
+        "subjects",
+        subjectsToSave,
+        subjectsRecordId
+      );
+      // If we just inserted, update record ID with the new row's id
+      if (!subjectsRecordId && result && result.data && result.data[0]?.id) {
+        setSubjectsRecordId(result.data[0].id);
+      }
+    } catch (e) {
+      console.error('Error persisting subjects:', e);
+    }
+  };
+
+  // Save mock tests to Supabase
+  const persistMockTests = async (testsToSave: Test[]) => {
+    if (!user) return;
+    try {
+      const result = await saveUserData(
+        user.id,
+        "mock_tests",
+        testsToSave,
+        mockTestsRecordId
+      );
+      if (!mockTestsRecordId && result && result.data && result.data[0]?.id) {
+        setMockTestsRecordId(result.data[0].id);
+      }
+    } catch (e) {
+      console.error('Error persisting mock tests:', e);
+    }
+  };
+
+  // Save study sessions to Supabase
+  const persistStudySessions = async (sessionsToSave: StudySession[]) => {
+    if (!user) return;
+    try {
+      const result = await saveUserData(
+        user.id,
+        "study_sessions",
+        sessionsToSave,
+        studySessionsRecordId
+      );
+      if (!studySessionsRecordId && result && result.data && result.data[0]?.id) {
+        setStudySessionsRecordId(result.data[0].id);
+      }
+    } catch (e) {
+      console.error('Error persisting study sessions:', e);
     }
   };
 
@@ -114,6 +207,18 @@ const Index = () => {
     });
   };
 
+  const handleEditSubject = async (subjectId: string, subjectData: Omit<Subject, "id">) => {
+    setSubjects((prev) => {
+      const updated = prev.map((subject) =>
+        subject.id === subjectId
+          ? { ...subjectData, id: subject.id }
+          : subject
+      );
+      persistSubjects(updated);
+      return updated;
+    });
+  };
+
   const handleToggleTopic = async (subjectId: string, topicId: string) => {
     setSubjects((prev) => {
       const updated = prev.map((subject) =>
@@ -131,14 +236,23 @@ const Index = () => {
     });
   };
 
-  const handleAddMockTest = (score: number, totalMarks: number) => {
-    const newTest: MockTest = {
+  const handleAddTest = (score: number, totalMarks: number, testType: TestType, subjectId?: string, subjectName?: string, unitId?: string, unitName?: string) => {
+    const newTest: Test = {
       id: Date.now().toString(),
       date: new Date().toISOString().split("T")[0],
       score,
       totalMarks,
+      testType,
+      subjectId,
+      subjectName,
+      unitId,
+      unitName,
     };
-    setMockTests((prev) => [...prev, newTest]);
+    setMockTests((prev) => {
+      const updated = [...prev, newTest];
+      persistMockTests(updated);
+      return updated;
+    });
   };
 
   const handleAddStudySession = (hours: number) => {
@@ -147,7 +261,19 @@ const Index = () => {
       date: new Date().toISOString().split("T")[0],
       hours,
     };
-    setStudySessions((prev) => [...prev, newSession]);
+    setStudySessions((prev) => {
+      const updated = [...prev, newSession];
+      persistStudySessions(updated);
+      return updated;
+    });
+  };
+
+  const handleDeleteTest = (testId: string) => {
+    setMockTests((prev) => {
+      const updated = prev.filter(test => test.id !== testId);
+      persistMockTests(updated);
+      return updated;
+    });
   };
 
   const calculateStreak = () => {
@@ -184,11 +310,41 @@ const Index = () => {
   const thisWeekHours = studySessions.reduce((sum, session) => sum + session.hours, 0);
   const studyStreak = calculateStreak();
 
-  const subjectPerformance = subjects.map((subject) => ({
-    subject: subject.name,
-    score: Math.random() * 30 + 60, // Sample data
-    targetScore: 80,
-  }));
+  // Calculate real subject performance analytics
+  const subjectPerformance = subjects.map((subject) => {
+    // Get tests for this subject
+    const subjectTests = mockTests.filter(
+      test => test.subjectId === subject.id || 
+      (test.testType === 'subject' && test.subjectId === subject.id) ||
+      (test.testType === 'unit' && test.subjectId === subject.id)
+    );
+    
+    // Calculate average test score for this subject
+    const averageTestScore = subjectTests.length > 0
+      ? subjectTests.reduce((sum, test) => sum + (test.score / test.totalMarks) * 100, 0) / subjectTests.length
+      : 0;
+    
+    // Calculate completion percentage
+    const completedTopics = subject.topics.filter(t => t.completed).length;
+    const completionPercentage = subject.topics.length > 0
+      ? (completedTopics / subject.topics.length) * 100
+      : 0;
+    
+    // Get study hours for this subject from study sessions
+    // Since we don't track subject-specific study sessions, we'll calculate based on overall time
+    const subjectStudyHours = 0; // Will be 0 until we add subject-specific study logging
+    
+    return {
+      subjectId: subject.id,
+      subjectName: subject.name,
+      totalTopics: subject.topics.length,
+      completedTopics: completedTopics,
+      completionPercentage: completionPercentage,
+      testCount: subjectTests.length,
+      averageTestScore: averageTestScore,
+      studyHours: subjectStudyHours,
+    };
+  });
 
   const studyDates = [...new Set(studySessions.map((s) => s.date))];
 
@@ -231,7 +387,7 @@ const Index = () => {
                   Welcome to GATE Exam Tracker!
                 </h2>
                 <p className="text-muted-foreground mb-6 max-w-md">
-                  Start by adding subjects you're preparing for. Track your progress, log study time, and monitor your mock test scores all in one place.
+                  Start by adding subjects you're preparing for. Track your progress, log study time, and monitor your test scores all in one place.
                 </p>
                 <SubjectManager onAddSubject={handleAddSubject} />
               </CardContent>
@@ -249,7 +405,7 @@ const Index = () => {
               <Tabs defaultValue="subjects" className="space-y-6">
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="subjects">Subjects</TabsTrigger>
-                  <TabsTrigger value="tests">Mock Tests</TabsTrigger>
+                  <TabsTrigger value="tests">Tests</TabsTrigger>
                   <TabsTrigger value="study">Study Log</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
                   <TabsTrigger value="streak">Streak</TabsTrigger>
@@ -260,12 +416,18 @@ const Index = () => {
                     subjects={subjects}
                     onToggleTopic={handleToggleTopic}
                     onDeleteSubject={handleDeleteSubject}
+                    onEditSubject={handleEditSubject}
                   />
                   {loadingSubjects && <div>Loading subjects...</div>}
                 </TabsContent>
 
                 <TabsContent value="tests">
-                  <MockTestTracker mockTests={mockTests} onAddMockTest={handleAddMockTest} />
+                  <TestTracker 
+                    tests={mockTests} 
+                    subjects={subjects} 
+                    onAddTest={handleAddTest}
+                    onDeleteTest={handleDeleteTest}
+                  />
                 </TabsContent>
 
                 <TabsContent value="study">
@@ -276,7 +438,9 @@ const Index = () => {
                 </TabsContent>
 
                 <TabsContent value="analytics">
-                  <PerformanceAnalytics subjectPerformance={subjectPerformance} />
+                  <PerformanceAnalytics 
+                    subjectPerformance={subjectPerformance}
+                  />
                 </TabsContent>
 
                 <TabsContent value="streak">
