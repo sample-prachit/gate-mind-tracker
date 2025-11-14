@@ -27,6 +27,11 @@ interface Subject {
   name: string;
   topics: Topic[];
   color: string;
+  startDate: string;
+  endDate: string;
+  totalHours: number;
+  completedHours: number;
+  inProgressHours: number;
 }
 
 interface SubjectTrackerProps {
@@ -94,7 +99,26 @@ export const SubjectTracker = ({ subjects, onToggleTopic, onDeleteSubject }: Sub
                       </AlertDialog>
                     </div>
                   </div>
-                  <Progress value={completionPercentage} className="mt-2" />
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>Duration: {new Date(subject.startDate).toLocaleDateString()} - {new Date(subject.endDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="text-center p-2 rounded-md bg-muted/50">
+                        <div className="font-semibold text-foreground">{subject.totalHours}h</div>
+                        <div className="text-muted-foreground">Total</div>
+                      </div>
+                      <div className="text-center p-2 rounded-md bg-muted/50">
+                        <div className="font-semibold text-foreground">{subject.completedHours}h</div>
+                        <div className="text-muted-foreground">Completed</div>
+                      </div>
+                      <div className="text-center p-2 rounded-md bg-muted/50">
+                        <div className="font-semibold text-foreground">{subject.inProgressHours}h</div>
+                        <div className="text-muted-foreground">In Progress</div>
+                      </div>
+                    </div>
+                  </div>
+                  <Progress value={completionPercentage} className="mt-3" />
                 </CardHeader>
               <CardContent>
                 <div className="space-y-3">

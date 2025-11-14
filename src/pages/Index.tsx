@@ -22,6 +22,11 @@ interface Subject {
   name: string;
   topics: Topic[];
   color: string;
+  startDate: string;
+  endDate: string;
+  totalHours: number;
+  completedHours: number;
+  inProgressHours: number;
 }
 
 interface MockTest {
@@ -40,21 +45,9 @@ interface StudySession {
 const Index = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
 
-  const [mockTests, setMockTests] = useState<MockTest[]>([
-    { id: "1", date: "2025-11-07", score: 65, totalMarks: 100 },
-    { id: "2", date: "2025-11-10", score: 72, totalMarks: 100 },
-    { id: "3", date: "2025-11-13", score: 78, totalMarks: 100 },
-  ]);
+  const [mockTests, setMockTests] = useState<MockTest[]>([]);
 
-  const [studySessions, setStudySessions] = useState<StudySession[]>([
-    { id: "1", date: "2025-11-08", hours: 3 },
-    { id: "2", date: "2025-11-09", hours: 4 },
-    { id: "3", date: "2025-11-10", hours: 2.5 },
-    { id: "4", date: "2025-11-11", hours: 5 },
-    { id: "5", date: "2025-11-12", hours: 3.5 },
-    { id: "6", date: "2025-11-13", hours: 4 },
-    { id: "7", date: "2025-11-14", hours: 3 },
-  ]);
+  const [studySessions, setStudySessions] = useState<StudySession[]>([]);
 
   const handleAddSubject = (newSubject: Omit<Subject, "id">) => {
     const subject: Subject = {

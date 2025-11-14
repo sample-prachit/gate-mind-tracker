@@ -24,6 +24,11 @@ interface Subject {
   name: string;
   topics: Topic[];
   color: string;
+  startDate: string;
+  endDate: string;
+  totalHours: number;
+  completedHours: number;
+  inProgressHours: number;
 }
 
 interface SubjectManagerProps {
@@ -45,6 +50,8 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
   const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
   const [topics, setTopics] = useState<string[]>([]);
   const [currentTopic, setCurrentTopic] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const handleAddTopic = () => {
     if (currentTopic.trim()) {
@@ -59,7 +66,7 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (subjectName.trim() && topics.length > 0) {
+    if (subjectName.trim() && topics.length > 0 && startDate && endDate) {
       const newSubject: Omit<Subject, "id"> = {
         name: subjectName.trim(),
         color: selectedColor,
@@ -68,12 +75,19 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
           name: topic,
           completed: false,
         })),
+        startDate,
+        endDate,
+        totalHours: 0,
+        completedHours: 0,
+        inProgressHours: 0,
       };
       onAddSubject(newSubject);
       setSubjectName("");
       setTopics([]);
       setCurrentTopic("");
       setSelectedColor(COLORS[0].value);
+      setStartDate("");
+      setEndDate("");
       setOpen(false);
     }
   };
@@ -124,6 +138,30 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
                   {color.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="start-date">Start Date</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end-date">End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+                required
+              />
             </div>
           </div>
 
@@ -179,7 +217,7 @@ export const SubjectManager = ({ onAddSubject, trigger }: SubjectManagerProps) =
             </Button>
             <Button
               type="submit"
-              disabled={!subjectName.trim() || topics.length === 0}
+              disabled={!subjectName.trim() || topics.length === 0 || !startDate || !endDate}
               className="flex-1"
             >
               Add Subject
