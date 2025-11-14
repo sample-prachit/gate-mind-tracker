@@ -5,8 +5,11 @@ import { MockTestTracker } from "@/components/MockTestTracker";
 import { StudyTimeLogger } from "@/components/StudyTimeLogger";
 import { PerformanceAnalytics } from "@/components/PerformanceAnalytics";
 import { StreakCalendar } from "@/components/StreakCalendar";
+import { SubjectManager } from "@/components/SubjectManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { GraduationCap, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Topic {
   id: string;
@@ -35,50 +38,7 @@ interface StudySession {
 }
 
 const Index = () => {
-  const [subjects, setSubjects] = useState<Subject[]>([
-    {
-      id: "math",
-      name: "Engineering Mathematics",
-      color: "bg-chart-1/10 text-chart-1",
-      topics: [
-        { id: "1", name: "Linear Algebra", completed: true },
-        { id: "2", name: "Calculus", completed: true },
-        { id: "3", name: "Differential Equations", completed: false },
-        { id: "4", name: "Probability & Statistics", completed: false },
-      ],
-    },
-    {
-      id: "digital",
-      name: "Digital Logic",
-      color: "bg-chart-2/10 text-chart-2",
-      topics: [
-        { id: "1", name: "Boolean Algebra", completed: true },
-        { id: "2", name: "Combinational Circuits", completed: false },
-        { id: "3", name: "Sequential Circuits", completed: false },
-      ],
-    },
-    {
-      id: "algorithms",
-      name: "Algorithms",
-      color: "bg-chart-3/10 text-chart-3",
-      topics: [
-        { id: "1", name: "Sorting & Searching", completed: true },
-        { id: "2", name: "Dynamic Programming", completed: false },
-        { id: "3", name: "Graph Algorithms", completed: false },
-        { id: "4", name: "Greedy Algorithms", completed: false },
-      ],
-    },
-    {
-      id: "os",
-      name: "Operating Systems",
-      color: "bg-chart-4/10 text-chart-4",
-      topics: [
-        { id: "1", name: "Process Management", completed: false },
-        { id: "2", name: "Memory Management", completed: false },
-        { id: "3", name: "File Systems", completed: false },
-      ],
-    },
-  ]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
 
   const [mockTests, setMockTests] = useState<MockTest[]>([
     { id: "1", date: "2025-11-07", score: 65, totalMarks: 100 },
@@ -95,6 +55,18 @@ const Index = () => {
     { id: "6", date: "2025-11-13", hours: 4 },
     { id: "7", date: "2025-11-14", hours: 3 },
   ]);
+
+  const handleAddSubject = (newSubject: Omit<Subject, "id">) => {
+    const subject: Subject = {
+      ...newSubject,
+      id: Date.now().toString(),
+    };
+    setSubjects((prev) => [...prev, subject]);
+  };
+
+  const handleDeleteSubject = (subjectId: string) => {
+    setSubjects((prev) => prev.filter((subject) => subject.id !== subjectId));
+  };
 
   const handleToggleTopic = (subjectId: string, topicId: string) => {
     setSubjects((prev) =>
@@ -172,54 +144,88 @@ const Index = () => {
 
   const studyDates = [...new Set(studySessions.map((s) => s.date))];
 
+  const showOnboarding = subjects.length === 0 && mockTests.length === 0 && studySessions.length === 0;
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center gap-3 mb-8">
-          <GraduationCap className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">GATE Exam Tracker</h1>
+        <div className="flex items-center justify-between gap-3 mb-8">
+          <div className="flex items-center gap-3">
+            <GraduationCap className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold text-foreground">GATE Exam Tracker</h1>
+          </div>
+          <SubjectManager 
+            onAddSubject={handleAddSubject}
+            trigger={
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Subject
+              </Button>
+            }
+          />
         </div>
 
-        <Dashboard
-          studyStreak={studyStreak}
-          totalStudyTime={thisWeekHours}
-          averageScore={averageScore}
-          topicsCompleted={completedTopics}
-          totalTopics={totalTopics}
-        />
-
-        <Tabs defaultValue="subjects" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="subjects">Subjects</TabsTrigger>
-            <TabsTrigger value="tests">Mock Tests</TabsTrigger>
-            <TabsTrigger value="study">Study Log</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="streak">Streak</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="subjects">
-            <SubjectTracker subjects={subjects} onToggleTopic={handleToggleTopic} />
-          </TabsContent>
-
-          <TabsContent value="tests">
-            <MockTestTracker mockTests={mockTests} onAddMockTest={handleAddMockTest} />
-          </TabsContent>
-
-          <TabsContent value="study">
-            <StudyTimeLogger
-              studySessions={studySessions}
-              onAddSession={handleAddStudySession}
+        {showOnboarding ? (
+          <Card className="border-2 border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <GraduationCap className="h-16 w-16 text-muted-foreground mb-4" />
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                Welcome to GATE Exam Tracker!
+              </h2>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                Start by adding subjects you're preparing for. Track your progress, log study time, and monitor your mock test scores all in one place.
+              </p>
+              <SubjectManager onAddSubject={handleAddSubject} />
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Dashboard
+              studyStreak={studyStreak}
+              totalStudyTime={thisWeekHours}
+              averageScore={averageScore}
+              topicsCompleted={completedTopics}
+              totalTopics={totalTopics}
             />
-          </TabsContent>
 
-          <TabsContent value="analytics">
-            <PerformanceAnalytics subjectPerformance={subjectPerformance} />
-          </TabsContent>
+            <Tabs defaultValue="subjects" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="subjects">Subjects</TabsTrigger>
+                <TabsTrigger value="tests">Mock Tests</TabsTrigger>
+                <TabsTrigger value="study">Study Log</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="streak">Streak</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="streak">
-            <StreakCalendar studyDates={studyDates} currentStreak={studyStreak} />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="subjects">
+                <SubjectTracker 
+                  subjects={subjects} 
+                  onToggleTopic={handleToggleTopic}
+                  onDeleteSubject={handleDeleteSubject}
+                />
+              </TabsContent>
+
+              <TabsContent value="tests">
+                <MockTestTracker mockTests={mockTests} onAddMockTest={handleAddMockTest} />
+              </TabsContent>
+
+              <TabsContent value="study">
+                <StudyTimeLogger
+                  studySessions={studySessions}
+                  onAddSession={handleAddStudySession}
+                />
+              </TabsContent>
+
+              <TabsContent value="analytics">
+                <PerformanceAnalytics subjectPerformance={subjectPerformance} />
+              </TabsContent>
+
+              <TabsContent value="streak">
+                <StreakCalendar studyDates={studyDates} currentStreak={studyStreak} />
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
       </div>
     </div>
   );
