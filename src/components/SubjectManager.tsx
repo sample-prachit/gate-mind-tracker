@@ -12,6 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { StudyFrequency, TaskStatus } from "@/types";
 
 interface Topic {
   id: string;
@@ -29,6 +38,10 @@ interface Subject {
   totalHours: number;
   completedHours: number;
   inProgressHours: number;
+  status?: TaskStatus;
+  frequency?: StudyFrequency;
+  customDays?: number[];
+  autoAddToCalendar?: boolean;
 }
 
 interface SubjectManagerProps {
@@ -55,6 +68,10 @@ export const SubjectManager = ({ onAddSubject, onEditSubject, subject, trigger }
   const [currentTopic, setCurrentTopic] = useState("");
   const [startDate, setStartDate] = useState(subject?.startDate || "");
   const [endDate, setEndDate] = useState(subject?.endDate || "");
+  const [status, setStatus] = useState<TaskStatus>(subject?.status || "not-started");
+  const [frequency, setFrequency] = useState<StudyFrequency>(subject?.frequency || "everyday");
+  const [customDays, setCustomDays] = useState<number[]>(subject?.customDays || []);
+  const [autoAddToCalendar, setAutoAddToCalendar] = useState(subject?.autoAddToCalendar ?? true);
 
   // Update form when subject prop changes
   const resetForm = () => {
@@ -64,12 +81,20 @@ export const SubjectManager = ({ onAddSubject, onEditSubject, subject, trigger }
       setTopics(subject.topics.map(t => t.name));
       setStartDate(subject.startDate);
       setEndDate(subject.endDate);
+      setStatus(subject.status || "not-started");
+      setFrequency(subject.frequency || "everyday");
+      setCustomDays(subject.customDays || []);
+      setAutoAddToCalendar(subject.autoAddToCalendar ?? true);
     } else {
       setSubjectName("");
       setSelectedColor(COLORS[0].value);
       setTopics([]);
       setStartDate("");
       setEndDate("");
+      setStatus("not-started");
+      setFrequency("everyday");
+      setCustomDays([]);
+      setAutoAddToCalendar(true);
     }
     setCurrentTopic("");
   };
@@ -83,6 +108,14 @@ export const SubjectManager = ({ onAddSubject, onEditSubject, subject, trigger }
 
   const handleRemoveTopic = (index: number) => {
     setTopics(topics.filter((_, i) => i !== index));
+  };
+
+  const toggleCustomDay = (day: number) => {
+    setCustomDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort()
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -101,6 +134,10 @@ export const SubjectManager = ({ onAddSubject, onEditSubject, subject, trigger }
         totalHours: subject?.totalHours || 0,
         completedHours: subject?.completedHours || 0,
         inProgressHours: subject?.inProgressHours || 0,
+        status,
+        frequency,
+        customDays: frequency === "custom" ? customDays : undefined,
+        autoAddToCalendar,
       };
       
       if (isEditMode && onEditSubject && subject) {
@@ -188,6 +225,63 @@ export const SubjectManager = ({ onAddSubject, onEditSubject, subject, trigger }
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Subject Status</Label>
+            <Select value={status} onValueChange={(v: TaskStatus) => setStatus(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not-started">Not Started</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Study Frequency</Label>
+            <Select value={frequency} onValueChange={(v: StudyFrequency) => setFrequency(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="everyday">Everyday (7 days/week)</SelectItem>
+                <SelectItem value="weekdays">Weekdays Only (Mon-Fri)</SelectItem>
+                <SelectItem value="custom">Custom Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {frequency === "custom" && (
+            <div className="space-y-2">
+              <Label>Select Days</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
+                  <Badge
+                    key={index}
+                    variant={customDays.includes(index) ? "default" : "outline"}
+                    className="cursor-pointer justify-center py-2"
+                    onClick={() => toggleCustomDay(index)}
+                  >
+                    {day}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="auto-calendar"
+              checked={autoAddToCalendar}
+              onCheckedChange={(checked) => setAutoAddToCalendar(checked as boolean)}
+            />
+            <Label htmlFor="auto-calendar" className="cursor-pointer">
+              Automatically add to calendar
+            </Label>
           </div>
 
           <div className="space-y-2">

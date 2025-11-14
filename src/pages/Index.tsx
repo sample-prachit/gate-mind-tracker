@@ -9,10 +9,14 @@ import { StudyTimeLogger } from "@/components/StudyTimeLogger";
 import { PerformanceAnalytics } from "@/components/PerformanceAnalytics";
 import { StreakCalendar } from "@/components/StreakCalendar";
 import { SubjectManager } from "@/components/SubjectManager";
+import { SchedulePlanner } from "@/components/SchedulePlanner";
+import { TaskCalendar } from "@/components/TaskCalendar";
+import { AIPlannerAssistant } from "@/components/AIPlannerAssistant";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { GraduationCap, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScheduledTask, TaskStatus, StudyFrequency } from "@/types";
 
 interface Topic {
   id: string;
@@ -30,6 +34,10 @@ interface Subject {
   totalHours: number;
   completedHours: number;
   inProgressHours: number;
+  status?: TaskStatus;
+  frequency?: StudyFrequency;
+  customDays?: number[];
+  autoAddToCalendar?: boolean;
 }
 
 interface Test {
@@ -63,6 +71,10 @@ const Index = () => {
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
   const [studySessionsRecordId, setStudySessionsRecordId] = useState<string | undefined>(undefined);
   const [loadingStudySessions, setLoadingStudySessions] = useState(true);
+
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
+  const [scheduledTasksRecordId, setScheduledTasksRecordId] = useState<string | undefined>(undefined);
+  const [loadingScheduledTasks, setLoadingScheduledTasks] = useState(true);
 
 
 
@@ -132,6 +144,79 @@ const Index = () => {
     loadStudySessions();
   }, [user]);
 
+  // Fetch scheduled tasks from Supabase
+  useEffect(() => {
+    if (!user) return;
+    const loadScheduledTasks = async () => {
+      setLoadingScheduledTasks(true);
+      try {
+        const data = await fetchUserData(user.id, "scheduled_tasks");
+        if (data && data.length > 0) {
+          setScheduledTasks(data[0].progress.scheduled_tasks || []);
+          setScheduledTasksRecordId(data[0].id);
+        } else {
+          setScheduledTasks([]);
+          setScheduledTasksRecordId(undefined);
+        }
+      } catch (e) {
+        console.error('Error loading scheduled tasks:', e);
+      }
+      setLoadingScheduledTasks(false);
+    };
+    loadScheduledTasks();
+  }, [user]);
+
+  // Auto-sync in-progress subjects to calendar
+  useEffect(() => {
+    if (!user || loadingSubjects || loadingScheduledTasks) return;
+    
+    const today = new Date();
+    subjects.forEach((subject) => {
+      // Only auto-add if status is in-progress and autoAddToCalendar is true
+      if (subject.status !== "in-progress" || !subject.autoAddToCalendar) return;
+      
+      // Check if already in scheduled tasks
+      const alreadyScheduled = scheduledTasks.some(task => task.subjectId === subject.id);
+      if (alreadyScheduled) return;
+      
+      // Get pending topics
+      const pendingTopics = subject.topics.filter(t => !t.completed);
+      if (pendingTopics.length === 0) return;
+      
+      // Build frequency note
+      let frequencyNote = "";
+      if (subject.frequency === "everyday") {
+        frequencyNote = "Everyday";
+      } else if (subject.frequency === "weekdays") {
+        frequencyNote = "Weekdays (Mon-Fri)";
+      } else if (subject.frequency === "custom" && subject.customDays) {
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        frequencyNote = `Custom: ${subject.customDays.map(d => dayNames[d]).join(", ")}`;
+      }
+      
+      const newTask: ScheduledTask = {
+        id: Date.now().toString() + subject.id,
+        subjectId: subject.id,
+        subjectName: subject.name,
+        topicIds: pendingTopics.map(t => t.id),
+        topicNames: pendingTopics.map(t => t.name),
+        startDate: subject.startDate,
+        endDate: subject.endDate,
+        status: "in-progress",
+        targetHours: Math.max(pendingTopics.length * 2, 5),
+        completedHours: subject.completedHours || 0,
+        notes: `Auto-synced: ${pendingTopics.length} pending topics | ${frequencyNote}`,
+        color: subject.color,
+      };
+      
+      setScheduledTasks(prev => {
+        const updated = [...prev, newTask];
+        persistScheduledTasks(updated);
+        return updated;
+      });
+    });
+  }, [subjects, user, loadingSubjects, loadingScheduledTasks]);
+
   // Save subjects to Supabase
   const persistSubjects = async (subjectsToSave: Subject[]) => {
     if (!user) return;
@@ -187,6 +272,24 @@ const Index = () => {
     }
   };
 
+  // Save scheduled tasks to Supabase
+  const persistScheduledTasks = async (tasksToSave: ScheduledTask[]) => {
+    if (!user) return;
+    try {
+      const result = await saveUserData(
+        user.id,
+        "scheduled_tasks",
+        tasksToSave,
+        scheduledTasksRecordId
+      );
+      if (!scheduledTasksRecordId && result && result.data && result.data[0]?.id) {
+        setScheduledTasksRecordId(result.data[0].id);
+      }
+    } catch (e) {
+      console.error('Error persisting scheduled tasks:', e);
+    }
+  };
+
   const handleAddSubject = async (newSubject: Omit<Subject, "id">) => {
     const subject: Subject = {
       ...newSubject,
@@ -205,6 +308,12 @@ const Index = () => {
       persistSubjects(updated);
       return updated;
     });
+    // Also remove any scheduled task for this subject
+    setScheduledTasks((prev) => {
+      const updated = prev.filter((task) => task.subjectId !== subjectId);
+      persistScheduledTasks(updated);
+      return updated;
+    });
   };
 
   const handleEditSubject = async (subjectId: string, subjectData: Omit<Subject, "id">) => {
@@ -217,11 +326,87 @@ const Index = () => {
       persistSubjects(updated);
       return updated;
     });
+    
+    // Update corresponding calendar task if it exists
+    const updatedSubject = { ...subjectData, id: subjectId };
+    const correspondingTask = scheduledTasks.find(task => task.subjectId === subjectId);
+    
+    if (correspondingTask) {
+      // If subject is no longer in-progress or auto-add is disabled, remove from calendar
+      if (updatedSubject.status !== "in-progress" || !updatedSubject.autoAddToCalendar) {
+        handleDeleteScheduledTask(correspondingTask.id);
+        return;
+      }
+      
+      // Update the task with new subject data
+      const pendingTopics = updatedSubject.topics.filter(t => !t.completed);
+      
+      if (pendingTopics.length === 0) {
+        // No pending topics, remove from calendar
+        handleDeleteScheduledTask(correspondingTask.id);
+        return;
+      }
+      
+      // Build frequency note
+      let frequencyNote = "";
+      if (updatedSubject.frequency === "everyday") {
+        frequencyNote = "Everyday";
+      } else if (updatedSubject.frequency === "weekdays") {
+        frequencyNote = "Weekdays (Mon-Fri)";
+      } else if (updatedSubject.frequency === "custom" && updatedSubject.customDays) {
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        frequencyNote = `Custom: ${updatedSubject.customDays.map(d => dayNames[d]).join(", ")}`;
+      }
+      
+      const taskUpdates: Partial<ScheduledTask> = {
+        subjectName: updatedSubject.name,
+        topicIds: pendingTopics.map(t => t.id),
+        topicNames: pendingTopics.map(t => t.name),
+        startDate: updatedSubject.startDate,
+        endDate: updatedSubject.endDate,
+        targetHours: Math.max(pendingTopics.length * 2, 5),
+        completedHours: updatedSubject.completedHours || 0,
+        notes: `Auto-synced: ${pendingTopics.length} pending topics | ${frequencyNote}`,
+        color: updatedSubject.color,
+      };
+      
+      handleUpdateScheduledTask(correspondingTask.id, taskUpdates);
+    } else if (updatedSubject.status === "in-progress" && updatedSubject.autoAddToCalendar) {
+      // Subject is now in-progress but not in calendar, add it
+      const pendingTopics = updatedSubject.topics.filter(t => !t.completed);
+      if (pendingTopics.length > 0) {
+        let frequencyNote = "";
+        if (updatedSubject.frequency === "everyday") {
+          frequencyNote = "Everyday";
+        } else if (updatedSubject.frequency === "weekdays") {
+          frequencyNote = "Weekdays (Mon-Fri)";
+        } else if (updatedSubject.frequency === "custom" && updatedSubject.customDays) {
+          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          frequencyNote = `Custom: ${updatedSubject.customDays.map(d => dayNames[d]).join(", ")}`;
+        }
+        
+        const newTask: Omit<ScheduledTask, "id"> = {
+          subjectId: updatedSubject.id,
+          subjectName: updatedSubject.name,
+          topicIds: pendingTopics.map(t => t.id),
+          topicNames: pendingTopics.map(t => t.name),
+          startDate: updatedSubject.startDate,
+          endDate: updatedSubject.endDate,
+          status: "in-progress",
+          targetHours: Math.max(pendingTopics.length * 2, 5),
+          completedHours: updatedSubject.completedHours || 0,
+          notes: `Auto-synced: ${pendingTopics.length} pending topics | ${frequencyNote}`,
+          color: updatedSubject.color,
+        };
+        
+        handleAddScheduledTask(newTask);
+      }
+    }
   };
 
   const handleToggleTopic = async (subjectId: string, topicId: string) => {
     setSubjects((prev) => {
-      const updated = prev.map((subject) =>
+      const updatedSubjects = prev.map((subject) =>
         subject.id === subjectId
           ? {
               ...subject,
@@ -231,8 +416,47 @@ const Index = () => {
             }
           : subject
       );
-      persistSubjects(updated);
-      return updated;
+      persistSubjects(updatedSubjects);
+
+      // Also update scheduled tasks for this subject to reflect pending topics
+      const updatedSubject = updatedSubjects.find((s) => s.id === subjectId);
+      if (updatedSubject) {
+        const pendingTopics = updatedSubject.topics.filter((t) => !t.completed);
+
+        setScheduledTasks((prevTasks) => {
+          const taskIndex = prevTasks.findIndex((t) => t.subjectId === subjectId);
+          if (taskIndex === -1) return prevTasks; // no linked task
+
+          const task = prevTasks[taskIndex];
+
+          // If no pending topics left, mark task completed
+          if (pendingTopics.length === 0) {
+            const next = prevTasks.map((t, i) =>
+              i === taskIndex
+                ? { ...t, topicIds: [], topicNames: [], status: 'completed' as TaskStatus, targetHours: 0 }
+                : t
+            );
+            persistScheduledTasks(next);
+            return next;
+          }
+
+          // Otherwise, keep only pending topics in the task
+          const next = prevTasks.map((t, i) =>
+            i === taskIndex
+              ? {
+                  ...t,
+                  topicIds: pendingTopics.map((pt) => pt.id),
+                  topicNames: pendingTopics.map((pt) => pt.name),
+                  targetHours: Math.max(pendingTopics.length * 2, 5),
+                }
+              : t
+          );
+          persistScheduledTasks(next);
+          return next;
+        });
+      }
+
+      return updatedSubjects;
     });
   };
 
@@ -276,6 +500,36 @@ const Index = () => {
     });
   };
 
+  const handleAddScheduledTask = (taskData: Omit<ScheduledTask, "id">) => {
+    const newTask: ScheduledTask = {
+      ...taskData,
+      id: Date.now().toString(),
+    };
+    setScheduledTasks((prev) => {
+      const updated = [...prev, newTask];
+      persistScheduledTasks(updated);
+      return updated;
+    });
+  };
+
+  const handleUpdateScheduledTask = (taskId: string, updates: Partial<ScheduledTask>) => {
+    setScheduledTasks((prev) => {
+      const updated = prev.map((task) =>
+        task.id === taskId ? { ...task, ...updates } : task
+      );
+      persistScheduledTasks(updated);
+      return updated;
+    });
+  };
+
+  const handleDeleteScheduledTask = (taskId: string) => {
+    setScheduledTasks((prev) => {
+      const updated = prev.filter((task) => task.id !== taskId);
+      persistScheduledTasks(updated);
+      return updated;
+    });
+  };
+
   const calculateStreak = () => {
     const today = new Date();
     let streak = 0;
@@ -304,8 +558,12 @@ const Index = () => {
   );
   const averageScore =
     mockTests.length > 0
-      ? mockTests.reduce((sum, test) => sum + (test.score / test.totalMarks) * 100, 0) /
-        mockTests.length
+      ? Number(
+          (
+            mockTests.reduce((sum, test) => sum + (test.score / test.totalMarks) * 100, 0) /
+            mockTests.length
+          ).toFixed(2)
+        )
       : 0;
   const thisWeekHours = studySessions.reduce((sum, session) => sum + session.hours, 0);
   const studyStreak = calculateStreak();
@@ -321,7 +579,12 @@ const Index = () => {
     
     // Calculate average test score for this subject
     const averageTestScore = subjectTests.length > 0
-      ? subjectTests.reduce((sum, test) => sum + (test.score / test.totalMarks) * 100, 0) / subjectTests.length
+      ? Number(
+          (
+            subjectTests.reduce((sum, test) => sum + (test.score / test.totalMarks) * 100, 0) /
+            subjectTests.length
+          ).toFixed(2)
+        )
       : 0;
     
     // Calculate completion percentage
@@ -403,8 +666,9 @@ const Index = () => {
               />
 
               <Tabs defaultValue="subjects" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="subjects">Subjects</TabsTrigger>
+                  <TabsTrigger value="planning">Planning</TabsTrigger>
                   <TabsTrigger value="tests">Tests</TabsTrigger>
                   <TabsTrigger value="study">Study Log</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -419,6 +683,26 @@ const Index = () => {
                     onEditSubject={handleEditSubject}
                   />
                   {loadingSubjects && <div>Loading subjects...</div>}
+                </TabsContent>
+
+                <TabsContent value="planning">
+                  <div className="space-y-6">
+                    <SchedulePlanner
+                      subjects={subjects}
+                      scheduledTasks={scheduledTasks}
+                      onAddTask={handleAddScheduledTask}
+                      onUpdateTask={handleUpdateScheduledTask}
+                      onDeleteTask={handleDeleteScheduledTask}
+                    />
+                    <TaskCalendar
+                      scheduledTasks={scheduledTasks}
+                      onUpdateTask={handleUpdateScheduledTask}
+                    />
+                    <AIPlannerAssistant
+                      subjects={subjects}
+                      scheduledTasks={scheduledTasks}
+                    />
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="tests">

@@ -92,6 +92,21 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
     };
   }, [isRunning]);
 
+  // Clear stopwatch when browser/tab is closed
+  React.useEffect(() => {
+    const handleBeforeUnload = () => {
+      localStorage.removeItem('stopwatch_isRunning');
+      localStorage.removeItem('stopwatch_elapsed');
+      localStorage.removeItem('stopwatch_timestamp');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (hours) {

@@ -10,6 +10,8 @@ export interface Topic {
   completed: boolean;
 }
 
+export type StudyFrequency = "everyday" | "weekdays" | "custom";
+
 export interface Subject {
   id: string;
   name: string;
@@ -20,6 +22,10 @@ export interface Subject {
   totalHours: number;
   completedHours: number;
   inProgressHours: number;
+  status?: TaskStatus;
+  frequency?: StudyFrequency;
+  customDays?: number[];
+  autoAddToCalendar?: boolean;
 }
 
 export interface Test {
@@ -60,4 +66,36 @@ export interface SubjectPerformance {
   subject: string;
   score: number;
   targetScore: number;
+}
+
+export type TaskStatus = "not-started" | "in-progress" | "completed" | "overdue";
+export type SchedulePeriod = "weekly" | "custom";
+
+export interface ScheduledTask {
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  topicIds: string[];
+  topicNames: string[];
+  startDate: string;
+  endDate: string;
+  status: TaskStatus;
+  targetHours: number;
+  completedHours: number;
+  notes?: string;
+  color: string;
+  dailyLog?: Record<string, "done" | "pending">;
+}
+
+export interface AIStudyPlan {
+  date: string;
+  tasks: {
+    subject: string;
+    topic: string;
+    duration: number;
+    timeSlot: string;
+    priority: "high" | "medium" | "low";
+  }[];
+  tips: string[];
+  motivation: string;
 }

@@ -36,7 +36,7 @@ export async function saveStudentProgress(data: StudentProgress) {
 /**
  * Fetch progress records for a student, optionally filtered by subject type
  * @param student_id - The user ID to fetch progress for
- * @param subject - Optional subject type filter (subjects, mock_tests, study_sessions)
+ * @param subject - Optional subject type filter (subjects, mock_tests, study_sessions, scheduled_tasks)
  * @returns Promise with array of progress records
  * @throws Error if database query fails
  */
@@ -52,16 +52,16 @@ export async function fetchStudentProgress(student_id: string, subject?: string)
 }
 
 /**
- * Helper function to save any data type (subjects, mock tests, study sessions)
+ * Helper function to save any data type (subjects, mock tests, study sessions, scheduled tasks)
  * @param userId - The user ID
- * @param dataType - Type of data being saved (subjects, mock_tests, study_sessions)
+ * @param dataType - Type of data being saved (subjects, mock_tests, study_sessions, scheduled_tasks)
  * @param data - The actual data to save
  * @param recordId - Optional existing record ID for updates
  * @returns Promise with result data including new/updated record ID
  */
 export async function saveUserData(
   userId: string,
-  dataType: 'subjects' | 'mock_tests' | 'study_sessions',
+  dataType: 'subjects' | 'mock_tests' | 'study_sessions' | 'scheduled_tasks',
   data: any,
   recordId?: string
 ) {
@@ -90,13 +90,13 @@ export async function saveUserData(
 /**
  * Helper function to fetch any data type from the database
  * @param userId - The user ID
- * @param dataType - Type of data to fetch (subjects, mock_tests, study_sessions)
+ * @param dataType - Type of data to fetch (subjects, mock_tests, study_sessions, scheduled_tasks)
  * @returns Promise with array of matching records
  * @throws Error if database query fails
  */
 export async function fetchUserData(
   userId: string,
-  dataType: 'subjects' | 'mock_tests' | 'study_sessions'
+  dataType: 'subjects' | 'mock_tests' | 'study_sessions' | 'scheduled_tasks'
 ) {
   const { data, error } = await supabase
     .from('student_progress')
