@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Clock } from "lucide-react";
-import { useState } from "react";
+import { Clock, Timer } from "lucide-react";
+import React, { useState, useRef } from "react";
 
 interface StudySession {
   id: string;
@@ -17,8 +17,48 @@ interface StudyTimeLoggerProps {
   onAddSession: (hours: number) => void;
 }
 
+
 export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLoggerProps) => {
+  const [tab, setTab] = useState<'manual' | 'stopwatch'>('manual');
   const [hours, setHours] = useState("");
+
+  // Stopwatch state
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsed, setElapsed] = useState(0); // seconds
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Stopwatch logic
+  const startStopwatch = () => {
+    if (!isRunning) {
+      setIsRunning(true);
+      intervalRef.current = setInterval(() => {
+        setElapsed((prev) => prev + 1);
+      }, 1000);
+    }
+  };
+  const pauseStopwatch = () => {
+    setIsRunning(false);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  };
+  const resetStopwatch = () => {
+    setIsRunning(false);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setElapsed(0);
+  };
+  const saveStopwatch = () => {
+    if (elapsed > 0) {
+      const hoursValue = +(elapsed / 3600).toFixed(2);
+      onAddSession(hoursValue);
+      resetStopwatch();
+    }
+  };
+
+  // Cleanup interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,31 +91,74 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
     <div className="space-y-4">
       <h2 className="text-2xl font-bold text-foreground">Study Time Log</h2>
 
+      <div className="flex gap-2 mb-2">
+        <Button
+          variant={tab === 'manual' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTab('manual')}
+        >
+          <Clock className="h-4 w-4 mr-1" /> Add Hours
+        </Button>
+        <Button
+          variant={tab === 'stopwatch' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTab('stopwatch')}
+        >
+          <Timer className="h-4 w-4 mr-1" /> Stopwatch
+        </Button>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Log Study Session</CardTitle>
+            <CardTitle>{tab === 'manual' ? 'Log Study Session' : 'Stopwatch Timer'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="hours">Hours Studied</Label>
-                <Input
-                  id="hours"
-                  type="number"
-                  step="0.5"
-                  placeholder="Enter hours"
-                  value={hours}
-                  onChange={(e) => setHours(e.target.value)}
-                  min="0.5"
-                  max="24"
-                />
+            {tab === 'manual' ? (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="hours">Hours Studied</Label>
+                  <Input
+                    id="hours"
+                    type="number"
+                    step="0.5"
+                    placeholder="Enter hours"
+                    value={hours}
+                    onChange={(e) => setHours(e.target.value)}
+                    min="0.5"
+                    max="24"
+                  />
+                </div>
+                <Button type="submit" className="w-full">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Log Session
+                </Button>
+              </form>
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-4xl font-mono tracking-widest mb-2">
+                  {`${String(Math.floor(elapsed / 3600)).padStart(2, '0')}:${String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`}
+                </div>
+                <div className="flex gap-2">
+                  {!isRunning ? (
+                    <Button onClick={startStopwatch} variant="default" size="sm">
+                      Start
+                    </Button>
+                  ) : (
+                    <Button onClick={pauseStopwatch} variant="secondary" size="sm">
+                      Pause
+                    </Button>
+                  )}
+                  <Button onClick={resetStopwatch} variant="outline" size="sm">
+                    Reset
+                  </Button>
+                  <Button onClick={saveStopwatch} variant="default" size="sm" disabled={elapsed === 0}>
+                    Save
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Session will be saved in hours.</div>
               </div>
-              <Button type="submit" className="w-full">
-                <Clock className="h-4 w-4 mr-2" />
-                Log Session
-              </Button>
-            </form>
+            )}
           </CardContent>
         </Card>
 
