@@ -31,7 +31,7 @@ export const StreakCalendar = ({ studyDates, currentStreak }: StreakCalendarProp
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle>30-Day Heatmap</CardTitle>
             <div className="flex items-center gap-2">
               <Flame className="h-5 w-5 text-accent" />
@@ -41,7 +41,7 @@ export const StreakCalendar = ({ studyDates, currentStreak }: StreakCalendarProp
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-10 gap-2">
+          <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 sm:gap-2">
             {last30Days.map((date) => (
               <div
                 key={date}
@@ -50,8 +50,8 @@ export const StreakCalendar = ({ studyDates, currentStreak }: StreakCalendarProp
               />
             ))}
           </div>
-          <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
-            <span>30 days ago</span>
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-2 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">30 days ago</span>
             <div className="flex items-center gap-2">
               <span>Less</span>
               <div className="flex gap-1">
@@ -61,7 +61,7 @@ export const StreakCalendar = ({ studyDates, currentStreak }: StreakCalendarProp
               </div>
               <span>More</span>
             </div>
-            <span>Today</span>
+            <span className="hidden sm:inline">Today</span>
           </div>
         </CardContent>
       </Card>

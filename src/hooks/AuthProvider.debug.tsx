@@ -1,4 +1,3 @@
-console.log("AuthProvider user:", user, "loading:", loading);
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -13,6 +12,7 @@ export function AuthProvider({ children }) {
     const session = supabase.auth.getSession().then(({ data }) => {
       setUser(data?.session?.user ?? null);
       setLoading(false);
+      console.log("AuthProvider user:", data?.session?.user, "loading:", false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
