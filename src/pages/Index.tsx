@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GraduationCap, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScheduledTask, TaskStatus, StudyFrequency } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 interface Topic {
   id: string;
@@ -60,6 +61,7 @@ interface StudySession {
 
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
+  const { toast } = useToast();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectsRecordId, setSubjectsRecordId] = useState<string | undefined>(undefined);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -489,6 +491,10 @@ const Index = () => {
       const updated = [...prev, newSession];
       persistStudySessions(updated);
       return updated;
+    });
+    toast({
+      title: "Study session logged!",
+      description: `Added ${hours} ${hours === 1 ? 'hour' : 'hours'} to your study log.`,
     });
   };
 
