@@ -23,14 +23,14 @@ export function AuthModal() {
 
   if (user) {
     return (
-      <div className="flex items-center gap-3 bg-gradient-to-r from-primary/10 via-white to-indigo-50 border border-primary/20 rounded-full px-6 py-2 shadow-md mt-6 w-fit mx-auto">
+      <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 bg-gradient-to-r from-primary/10 via-white to-indigo-50 border border-primary/20 rounded-xl px-4 py-2 shadow-md mt-6 w-full max-w-md mx-auto">
         <div className="bg-primary/20 rounded-full p-1 flex items-center justify-center">
           <GraduationCap className="h-5 w-5 text-primary" />
         </div>
-        <span className="text-base font-semibold text-foreground tracking-tight">
+        <span className="text-base font-semibold text-foreground tracking-tight break-all text-center w-full sm:w-auto">
           {user.email}
         </span>
-        <Button variant="outline" size="sm" onClick={signOut} disabled={loading} className="ml-2">
+        <Button variant="outline" size="sm" onClick={signOut} disabled={loading} className="w-full sm:w-auto">
           Sign Out
         </Button>
       </div>

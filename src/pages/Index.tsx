@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { fetchUserData, saveUserData } from "@/lib/progressApi";
 import { useSupabaseAuth } from "@/hooks/AuthProvider";
 import { AuthModal } from "@/components/AuthModal";
@@ -60,7 +60,18 @@ interface StudySession {
 }
 
 const Index = () => {
-  const { user, loading } = useSupabaseAuth();
+  // Ref for tab list scroll
+  const tabListRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (tabListRef.current) {
+      tabListRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+  }, []);
+  const { user, loading, signOut } = useSupabaseAuth();
+    const handleSignOut = async () => {
+      await signOut();
+    };
+  const [showAddSubject, setShowAddSubject] = useState(false);
   const { toast } = useToast();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectsRecordId, setSubjectsRecordId] = useState<string | undefined>(undefined);
@@ -632,22 +643,18 @@ const Index = () => {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto space-y-8">
-          <div className="flex items-center justify-between gap-3 mb-8">
-            <div className="flex items-center gap-3">
-              <GraduationCap className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">GATE Exam Tracker</h1>
+          {/* Responsive header for mobile */}
+          <div className="space-y-4 mb-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <GraduationCap className="h-8 w-8 text-primary" />
+                GATE Exam Tracker
+              </h1>
+              <Button onClick={() => setShowAddSubject(true)} className="w-full sm:w-auto mt-2 sm:mt-0">
+                <Plus className="h-5 w-5 mr-2" /> Add Subject
+              </Button>
             </div>
-            <SubjectManager
-              onAddSubject={handleAddSubject}
-              trigger={
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Subject
-                </Button>
-              }
-            />
           </div>
-
           {showOnboarding ? (
             <Card className="border-2 border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -672,22 +679,46 @@ const Index = () => {
               />
 
               <Tabs defaultValue="subjects" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="subjects">Subjects</TabsTrigger>
-                  <TabsTrigger value="planning">Planning</TabsTrigger>
-                  <TabsTrigger value="tests">Tests</TabsTrigger>
-                  <TabsTrigger value="study">Study Log</TabsTrigger>
-                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                  <TabsTrigger value="streak">Streak</TabsTrigger>
-                </TabsList>
+                  {/* Wrap TabsList in a div for scroll control */}
+                  <div
+                    ref={tabListRef}
+                    className="w-full overflow-x-auto min-w-0"
+                    style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }}
+                    tabIndex={0}
+                  >
+                    <TabsList className="flex gap-2 px-2 min-w-max">
+                      <TabsTrigger value="subjects" className="flex-shrink-0">Subjects</TabsTrigger>
+                      <TabsTrigger value="planning" className="flex-shrink-0">Planning</TabsTrigger>
+                      <TabsTrigger value="tests" className="flex-shrink-0">Tests</TabsTrigger>
+                      <TabsTrigger value="study" className="flex-shrink-0">Study Log</TabsTrigger>
+                      <TabsTrigger value="analytics" className="flex-shrink-0">Analytics</TabsTrigger>
+                      <TabsTrigger value="streak" className="flex-shrink-0">Streak</TabsTrigger>
+                    </TabsList>
+                  </div>
+
 
                 <TabsContent value="subjects">
-                  <SubjectTracker
-                    subjects={subjects}
-                    onToggleTopic={handleToggleTopic}
-                    onDeleteSubject={handleDeleteSubject}
-                    onEditSubject={handleEditSubject}
-                  />
+                  {(() => {
+                    // Sort: In Progress, Overdue, Completed
+                    const statusOrder = { inprogress: 0, overdue: 1, completed: 2 };
+                    const getStatusRank = (status?: string) => {
+                      if (!status) return 99;
+                      const s = status.toLowerCase();
+                      if (s.includes("progress")) return 0;
+                      if (s.includes("overdue")) return 1;
+                      if (s.includes("complete")) return 2;
+                      return 99;
+                    };
+                    const sortedSubjects = [...subjects].sort((a, b) => getStatusRank(a.status) - getStatusRank(b.status));
+                    return (
+                      <SubjectTracker
+                        subjects={sortedSubjects}
+                        onToggleTopic={handleToggleTopic}
+                        onDeleteSubject={handleDeleteSubject}
+                        onEditSubject={handleEditSubject}
+                      />
+                    );
+                  })()}
                   {loadingSubjects && <div>Loading subjects...</div>}
                 </TabsContent>
 

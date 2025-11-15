@@ -106,9 +106,9 @@ export const TaskCalendar = ({ scheduledTasks, onUpdateTask }: TaskCalendarProps
 
   return (
     <>
-      <Card>
+      <Card className="w-full">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between min-w-0 gap-2">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="h-5 w-5" />
@@ -118,14 +118,14 @@ export const TaskCalendar = ({ scheduledTasks, onUpdateTask }: TaskCalendarProps
                 Visual overview of your scheduled study tasks
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-shrink flex-grow">
               <Button variant="outline" size="sm" onClick={handleToday}>
                 Today
               </Button>
               <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <div className="text-sm font-medium min-w-[140px] text-center">
+              <div className="text-sm font-medium min-w-[80px] max-w-[120px] truncate text-center" style={{flex: 1}}>
                 {format(currentMonth, "MMMM yyyy")}
               </div>
               <Button variant="ghost" size="icon" onClick={handleNextMonth}>
@@ -134,7 +134,7 @@ export const TaskCalendar = ({ scheduledTasks, onUpdateTask }: TaskCalendarProps
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-6">
           <div className="space-y-4">
             {/* Legend */}
             <div className="flex flex-wrap gap-4 text-sm">
@@ -153,7 +153,8 @@ export const TaskCalendar = ({ scheduledTasks, onUpdateTask }: TaskCalendarProps
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2">
+            <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-[420px] sm:min-w-0" style={{ width: 'max-content', minWidth: '100%' }}>
               {/* Day headers */}
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <div key={day} className="text-center text-sm font-semibold text-muted-foreground p-2">
@@ -176,17 +177,18 @@ export const TaskCalendar = ({ scheduledTasks, onUpdateTask }: TaskCalendarProps
                   <div
                     key={day.toISOString()}
                     className={`
-                      min-h-[80px] p-2 border rounded-lg cursor-pointer transition-all
+                      min-h-[60px] p-1 sm:p-2 border rounded-lg cursor-pointer transition-all flex flex-col items-center
                       ${dayIsToday ? "border-primary border-2" : "border-border"}
                       ${hasTasksToday ? "hover:shadow-md hover:border-primary" : "hover:bg-muted"}
                       ${!isSameMonth(day, currentMonth) ? "opacity-50" : ""}
                     `}
+                    style={{ minWidth: 0 }}
                     onClick={() => handleDateClick(day)}
                   >
-                    <div className="text-sm font-medium mb-1">
+                    <div className="text-sm font-medium mb-0.5">
                       {format(day, "d")}
                     </div>
-                    <div className="space-y-1">
+                    <div className="flex flex-col gap-0.5 w-full items-center">
                       {tasks.slice(0, 3).map((task) => {
                         const status = getTaskStatus(task);
                         const dateKey = format(day, 'yyyy-MM-dd');
@@ -195,12 +197,13 @@ export const TaskCalendar = ({ scheduledTasks, onUpdateTask }: TaskCalendarProps
                           <div
                             key={task.id}
                             className={`
-                              text-xs px-1.5 py-0.5 rounded truncate
+                              text-xs px-1 py-0.5 rounded w-full text-center leading-tight break-words
                               ${isDone ? 'bg-green-500' : getStatusColor(status)} text-white
                             `}
+                            style={{ wordBreak: 'break-word', minWidth: 0 }}
                             title={`${task.subjectName} - ${status}${isDone ? ' (done for this day)' : ''}`}
                           >
-                            {task.subjectName}
+                            {task.subjectName.length > 6 ? task.subjectName.slice(0, 6) + '…' : task.subjectName}
                           </div>
                         );
                       })}
@@ -213,6 +216,7 @@ export const TaskCalendar = ({ scheduledTasks, onUpdateTask }: TaskCalendarProps
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </CardContent>
