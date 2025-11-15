@@ -130,7 +130,8 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
     const totalHours = sessionsOnDate.reduce((sum, s) => sum + s.hours, 0);
     return {
       date: new Date(date).toLocaleDateString("en-US", { weekday: "short" }),
-      hours: totalHours,
+      hours: Number(totalHours.toFixed(2)),
+      fullDate: date,
     };
   });
 
@@ -169,24 +170,25 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
                     id="hours"
                     type="number"
                     step="0.5"
-                    placeholder="Enter hours"
+                    placeholder="Enter hours (e.g., 2.5)"
                     value={hours}
                     onChange={(e) => setHours(e.target.value)}
                     min="0.5"
                     max="24"
+                    required
                   />
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={!hours || Number(hours) <= 0}>
                   <Clock className="h-4 w-4 mr-2" />
                   Log Session
                 </Button>
               </form>
             ) : (
               <div className="flex flex-col items-center gap-4">
-                <div className="text-4xl font-mono tracking-widest mb-2">
+                <div className="text-3xl sm:text-4xl font-mono tracking-widest mb-2">
                   {`${String(Math.floor(elapsed / 3600)).padStart(2, '0')}:${String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 justify-center">
                   {!isRunning ? (
                     <Button onClick={startStopwatch} variant="default" size="sm">
                       Start
@@ -203,7 +205,9 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
                     Save
                   </Button>
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">Session will be saved in hours.</div>
+                <div className="text-xs text-muted-foreground text-center mt-1">
+                  {elapsed > 0 ? `${(elapsed / 3600).toFixed(2)} hours will be saved` : 'Start the timer to track your study session'}
+                </div>
               </div>
             )}
           </CardContent>
@@ -214,15 +218,44 @@ export const StudyTimeLogger = ({ studySessions, onAddSession }: StudyTimeLogger
             <CardTitle>Last 7 Days</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="hours" fill="hsl(var(--accent))" />
-              </BarChart>
-            </ResponsiveContainer>
+            {studySessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[200px] text-center">
+                <Clock className="h-12 w-12 text-muted-foreground mb-2 opacity-50" />
+                <p className="text-sm text-muted-foreground">No study sessions logged yet.</p>
+                <p className="text-xs text-muted-foreground mt-1">Add your first session to see the chart!</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    stroke="hsl(var(--border))"
+                  />
+                  <YAxis 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    stroke="hsl(var(--border))"
+                    label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      color: 'hsl(var(--popover-foreground))'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    formatter={(value: number) => [`${value} hours`, 'Study Time']}
+                  />
+                  <Bar 
+                    dataKey="hours" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
