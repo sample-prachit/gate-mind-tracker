@@ -149,20 +149,20 @@ export const SchedulePlanner = ({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex-1">
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Study Schedule Planner
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="mt-1">
                 Subjects marked as "In Progress" are automatically synced here. Track progress and manage deadlines.
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="w-full sm:w-auto">
                     <Plus className="h-4 w-4 mr-2" />
                     Schedule Task
                   </Button>
@@ -222,7 +222,7 @@ export const SchedulePlanner = ({
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Start Date</Label>
                       <Input
@@ -310,29 +310,30 @@ export const SchedulePlanner = ({
                   return (
                     <Card key={task.id} className="border-l-4" style={{ borderLeftColor: task.color.includes('bg-') ? undefined : task.color }}>
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2 w-full">
+                            <div className="flex flex-wrap items-center gap-2">
                               <h3 className="font-semibold text-lg">{task.subjectName}</h3>
                               {getStatusBadge(actualStatus)}
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground break-words">
                               Topics: {task.topicNames.join(", ")}
                             </p>
-                            <div className="flex items-center gap-4 text-sm">
-                              <span>
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm">
+                              <span className="text-xs sm:text-sm">
                                 📅 {format(parseISO(task.startDate), "MMM dd")} -{" "}
                                 {format(parseISO(task.endDate), "MMM dd, yyyy")}
                               </span>
                             </div>
                             {/* Notes removed for cleaner look */}
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 w-full sm:w-auto">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => cycleTaskStatus(task)}
                               title="Change status"
+                              className="flex-1 sm:flex-none"
                             >
                               {getStatusIcon(actualStatus)}
                             </Button>
@@ -340,6 +341,7 @@ export const SchedulePlanner = ({
                               size="sm"
                               variant="destructive"
                               onClick={() => onDeleteTask(task.id)}
+                              className="flex-1 sm:flex-none"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

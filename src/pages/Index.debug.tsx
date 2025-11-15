@@ -1,4 +1,3 @@
-console.log("Index user:", user, "loading:", loading);
 import { useState, useEffect } from "react";
 import { fetchStudentProgress, saveStudentProgress } from "@/lib/progressApi";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -48,6 +47,7 @@ interface StudySession {
 
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
+  console.log("Index user:", user, "loading:", loading);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
 
@@ -122,6 +122,16 @@ const Index = () => {
     });
   };
 
+  const handleEditSubject = async (subjectId: string, updatedSubject: Omit<Subject, "id">) => {
+    setSubjects((prev) => {
+      const updated = prev.map((subject) =>
+        subject.id === subjectId ? { ...updatedSubject, id: subjectId } : subject
+      );
+      persistSubjects(updated);
+      return updated;
+    });
+  };
+
   const handleAddMockTest = (score: number, totalMarks: number) => {
     const newTest: MockTest = {
       id: Date.now().toString(),
@@ -175,11 +185,28 @@ const Index = () => {
   const thisWeekHours = studySessions.reduce((sum, session) => sum + session.hours, 0);
   const studyStreak = calculateStreak();
 
-  const subjectPerformance = subjects.map((subject) => ({
-    subject: subject.name,
-    score: Math.random() * 30 + 60, // Sample data
-    targetScore: 80,
-  }));
+  const subjectPerformance = subjects.map((subject) => {
+    const completedTopics = subject.topics.filter((t) => t.completed).length;
+    const totalTopics = subject.topics.length;
+    const completionPercentage = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
+    
+    // For now, use all mock tests as we don't have subject-specific tests yet
+    const testCount = mockTests.length;
+    const averageTestScore = testCount > 0 
+      ? mockTests.reduce((sum, test) => sum + (test.score / test.totalMarks) * 100, 0) / testCount 
+      : 0;
+    
+    return {
+      subjectId: subject.id,
+      subjectName: subject.name,
+      totalTopics,
+      completedTopics,
+      completionPercentage,
+      testCount,
+      averageTestScore,
+      studyHours: subject.completedHours,
+    };
+  });
 
   const studyDates = [...new Set(studySessions.map((s) => s.date))];
 
@@ -251,6 +278,7 @@ const Index = () => {
                     subjects={subjects}
                     onToggleTopic={handleToggleTopic}
                     onDeleteSubject={handleDeleteSubject}
+                    onEditSubject={handleEditSubject}
                   />
                   {loadingSubjects && <div>Loading subjects...</div>}
                 </TabsContent>
